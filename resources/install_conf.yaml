@@ -1,0 +1,54 @@
+hosts: ['localhost']
+working_directory: /media/barmi83/data/DevTools
+proxy:
+  host:
+  port:
+  username:
+  pwd:
+java:
+  version: 8
+maven:
+  url: 'http://mirror.lagoon.nc/pub/apache/maven/maven-3/%s/binaries/%s'
+  artefact: apache-maven-%s-bin.tar.gz
+  version: 3.5.2
+liquibase:
+  url: "https://github.com/liquibase/liquibase/releases/download/liquibase-parent-%s/liquibase-%s-1.noarch.rpm"
+  version: 3.5.3
+driver:
+  postgres.url: "http://central.maven.org/maven2/org/postgresql/postgresql/%s/postgresql-%s.jar"
+  postgres.version: 42.1.4
+  h2.url: http://central.maven.org/maven2/com/h2database/h2/%s/h2-%s.jar
+  h2.version: 1.4.196
+  jt400.url: "http://central.maven.org/maven2/net/sf/jt400/jt400-full/%s/jt400-full-%s.jar"
+  jt400.version: 6.0
+schemacrawler:
+  url: "https://github.com/adriens/schemacrawler-deb/releases/download/%s/schemacrawler-deb_%s_all.deb"
+  version: 14.15.04
+intellij:
+  url: "https://download.jetbrains.com/idea/%s"
+  version: 2017.3.2
+  build: idea-IU-173.4127.27
+  artefact: ideaIU-%s.tar.gz
+oh-my-zsh:
+  plugins: "git git-extras common-aliases dirhistory atom command-not-found mvn svn python pip fabric pyenv"
+bfg_cleaner:
+  url: "http://repo1.maven.org/maven2/com/madgag/bfg/%s/bfg-%s.jar"
+  version: 1.12.16
+fakeSMTP:
+  url: "http://nilhcem.github.com/FakeSMTP/downloads/fakeSMTP-latest.zip"
+  version: 2.0
+ads:
+ url: "http://mirror.lagoon.nc/pub/apache/directory/studio/%s/%s"
+ artefact: ApacheDirectoryStudio-%s-linux.gtk.x86_64.tar.gz
+ version: 2.0.0.v20170904-M13
+tomcat:
+ url: "http://mirror.lagoon.nc/pub/apache/tomcat/%s/v%s/bin/%s"
+ major: tomcat-7
+ artefact: apache-tomcat-%s.tar.gz
+ version: 7.0.82
+javax.mail:
+  url: "http://central.maven.org/maven2/com/sun/mail/javax.mail/%s/javax.mail-%s.jar"
+  version: 1.6.0
+activation:
+  url: "http://central.maven.org/maven2/javax/activation/activation/%s/activation-%s.jar"
+  version: 1.1.1
