@@ -1,6 +1,6 @@
-# Developer workstation install script
+# Developer workstation installer
 
-Python script that installs all development tools (and more...) I need to work on my Linux Mint workstation.
+A Python script that installs all development tools I need (and more...) to work on my Linux Mint workstation.
 
 ## Requirements
 
