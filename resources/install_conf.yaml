@@ -1,4 +1,5 @@
 hosts: ['localhost']
+user:
 working_directory: /media/barmi83/data/DevTools
 proxy:
   host:
@@ -12,7 +13,7 @@ maven:
   artefact: apache-maven-%s-bin.tar.gz
   version: 3.5.2
 liquibase:
-  url: "https://github.com/liquibase/liquibase/releases/download/liquibase-parent-%s/liquibase-%s-1.noarch.rpm"
+  url: "https://github.com/liquibase/liquibase/releases/download/liquibase-parent-%s/liquibase-debian_%s_all.deb"
   version: 3.5.3
 driver:
   postgres.url: "http://central.maven.org/maven2/org/postgresql/postgresql/%s/postgresql-%s.jar"

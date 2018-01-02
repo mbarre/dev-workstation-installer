@@ -1,2 +1,8 @@
 .idea
 fabfile.pyc
+.vagrant
+ubuntu-xenial-16.04-cloudimg-console.log
+get-pip.py
+logs
+DevTools
+setup_logging.pyc
