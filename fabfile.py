@@ -27,17 +27,19 @@ def set_host():
 @task
 def my_install_workstation():
     set_host()
-    mkdir_working_directory()
-
-    java_install()
-    liquibase_install()
-    schemacrawler_install()
+    # mkdir_working_directory()
+    #
+    # java_install()
+    # liquibase_install()
+    # schemacrawler_install()
     intellij_install()
+    datagrip_install()
 
     maven_install()
     git_install()
     apache_directory_studio_install()
     apache_tomcat_install()
+    postgresql_install()
 
     tools_install()
     bfg_repo_cleaner_install()
@@ -49,7 +51,7 @@ def my_install_workstation():
 
 @task
 def install_workstation():
-    set_host()
+    # set_host()
     # mkdir_working_directory()
     #
     # java_install()
@@ -102,7 +104,7 @@ def maven_install():
             sudo("ln -s %s/apache-maven-%s maven" % ("/opt", properties['maven']['version']))
             run("export PATH=%s/bin:$PATH" % ("/opt/maven"))
         run("rm -rf %s " % mvn_artefact)
-        run("mvn -v")
+        # run("mvn -v")
 
     logging.info('Maven installed with success...')
 
@@ -124,7 +126,7 @@ def ant_install():
             sudo("ln -s %s/apache-ant-%s ant" % ("/opt", properties['ant']['version']))
             run("export PATH=%s/bin:$PATH" % ("/opt/ant"))
         run("rm -rf %s " % ant_artefact)
-        run("ant -version")
+        # run("ant -version")
 
     logging.info('ant installed with success...')
 
@@ -137,7 +139,7 @@ def java_install():
     sudo("apt-add-repository -y ppa:openjdk-r/ppa")
     sudo("apt-get update")
     sudo("apt-get -y install openjdk-%s-jdk" % properties['java']['version'])
-    run("java -version")
+    # run("java -version")
 
     logging.info('Java installed with success...')
 
@@ -364,21 +366,20 @@ def postgresql_install():
     sudo("apt-get install postgresql-%s pgadmin3" % properties['postgres']['version'])
 
     old_pghba_postgres = "local   all             postgres                                peer"
-    new_pghba_postgres = "local   all             postgres                                md5"
+    new_pghba_postgres = "local   all             postgres                                trust"
     old_pghba_all = "local   all             all                                     peer"
-    new_pghba_all = "local   all             all                                     md5"
+    new_pghba_all = "local   all             all                                     trust"
     sudo("sed -i 's/%s/%s/g' %s" % (old_pghba_postgres, new_pghba_postgres, ("/etc/postgresql/%s/main/pg_hba.conf" % properties['postgres']['version'])))
     sudo("sed -i 's/%s/%s/g' %s" % (old_pghba_all, new_pghba_all, ("/etc/postgresql/%s/main/pg_hba.conf" % properties['postgres']['version'])))
 
     sudo("service postgresql restart %s" % properties['postgres']['version'])
 
     sudo('echo "{username}:{password}" | chpasswd'.format(username='postgres', password= properties['postgres']['version']))
-    # _run_as_pg('''psql -c "ALTER USER postgres WITH PASSWORD '%s';"''' % properties['postgres']['pwd'])
+    _run_as_pg('''psql -c "ALTER ROLE postgres WITH PASSWORD '%s';"''' % properties['postgres']['pwd'])
 
 
 def _run_as_pg(command):
-    return sudo('su - postgres %s' % command)
-
+    return sudo('su - postgres << EOF\n%s\nEOF' % command)
 
 @task
 def apache_tomcat_install():
