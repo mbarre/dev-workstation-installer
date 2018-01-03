@@ -108,10 +108,34 @@ def maven_install():
 
 
 @task
+def ant_install():
+    logging.info('Ant install...')
+
+    mkdir_working_directory()
+
+    with cd(properties['working_directory']):
+        ant_artefact = properties['ant']['artefact'] % properties['ant']['version']
+        ant_url = properties['ant']['url'] % ant_artefact
+        wget(ant_url, properties['proxy']['host'] is not None)
+        with cd("/opt"):
+            sudo("tar xvzf %s/%s" % (properties['working_directory'], ant_artefact))
+            if files.exists("ant"):
+                sudo("unlink ant")
+            sudo("ln -s %s/apache-ant-%s ant" % ("/opt", properties['ant']['version']))
+            run("export PATH=%s/bin:$PATH" % ("/opt/ant"))
+        run("rm -rf %s " % ant_artefact)
+        run("ant -version")
+
+    logging.info('ant installed with success...')
+
+
+@task
 def java_install():
     logging.info('Java JDK install...')
 
     mkdir_working_directory()
+    sudo("apt-add-repository -y ppa:openjdk-r/ppa")
+    sudo("apt-get update")
     sudo("apt-get -y install openjdk-%s-jdk" % properties['java']['version'])
     run("java -version")
 
@@ -263,6 +287,26 @@ def intellij_install():
 
     logging.info('Intellij installed with success...')
 
+@task
+def datagrip_install():
+    logging.info('DataGrip install...')
+
+    mkdir_working_directory()
+
+    with cd(properties['working_directory']):
+        datagrip_artefact = properties['datagrip']['artefact'] % properties['datagrip']['version']
+        datagrip_url = properties['datagrip']['url'] % datagrip_artefact
+        if not files.exists(datagrip_artefact):
+            run("wget %s" % datagrip_url)
+        run("tar xvzf %s" % datagrip_artefact)
+        if files.exists("datagrip"):
+            run("unlink datagrip")
+        run("ln -s DataGrip-%s datagrip" % properties['datagrip']['version'])
+        run("rm -rf %s" % datagrip_artefact)
+
+    logging.info('Datagrip installed with success...')
+
+
 
 @task
 def oh_my_zsh_install():
@@ -270,7 +314,8 @@ def oh_my_zsh_install():
 
     if properties['proxy']['host'] is not None:
         proxy_addr = "https://%s:%s@%s:%s" % (
-        properties['proxy']['username'], properties['proxy']['pwd'], properties['proxy']['host'], properties['proxy']['port'])
+            properties['proxy']['username'], properties['proxy']['pwd'], properties['proxy']['host'],
+            properties['proxy']['port'])
         run("git config --global https.proxy %s" % proxy_addr)
 
     with cd("~"):
@@ -302,6 +347,37 @@ def apache_directory_studio_install():
         run("rm -rf %s" % ads_artefact)
 
     logging.info('Apache Directory Studio installed with success...')
+
+
+@task
+def postgresql_install():
+    logging.info('PostgreSQL install...')
+
+    ubuntu_version = properties['ubuntu']['codename']
+    url = "deb http://apt.postgresql.org/pub/repos/apt/ %s-pgdg main" % ubuntu_version
+    if not files.exists("/etc/apt/sources.list.d/pgdg.list"):
+        sudo("touch /etc/apt/sources.list.d/pgdg.list")
+    append_to_file(url, "/etc/apt/sources.list.d/pgdg.list", True)
+
+    sudo("wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -")
+    sudo("apt-get update")
+    sudo("apt-get install postgresql-%s pgadmin3" % properties['postgres']['version'])
+
+    old_pghba_postgres = "local   all             postgres                                peer"
+    new_pghba_postgres = "local   all             postgres                                md5"
+    old_pghba_all = "local   all             all                                     peer"
+    new_pghba_all = "local   all             all                                     md5"
+    sudo("sed -i 's/%s/%s/g' %s" % (old_pghba_postgres, new_pghba_postgres, ("/etc/postgresql/%s/main/pg_hba.conf" % properties['postgres']['version'])))
+    sudo("sed -i 's/%s/%s/g' %s" % (old_pghba_all, new_pghba_all, ("/etc/postgresql/%s/main/pg_hba.conf" % properties['postgres']['version'])))
+
+    sudo("service postgresql restart %s" % properties['postgres']['version'])
+
+    sudo('echo "{username}:{password}" | chpasswd'.format(username='postgres', password= properties['postgres']['version']))
+    # _run_as_pg('''psql -c "ALTER USER postgres WITH PASSWORD '%s';"''' % properties['postgres']['pwd'])
+
+
+def _run_as_pg(command):
+    return sudo('su - postgres %s' % command)
 
 
 @task
@@ -354,10 +430,12 @@ def apache_tomcat_install():
     logging.info('Apache Tomcat installed with success...')
 
 
-def append_to_file(text, file):
+def append_to_file(text, file, useSudo=False):
     cmd = "sed -i \"$ a " + text + "\" " + file
-    print cmd
-    run(cmd)
+    if useSudo:
+        sudo(cmd)
+    else:
+        run(cmd)
 
 
 def put_double_quote_around_string(text, file):
@@ -379,52 +457,51 @@ def edit_oh_my_zshrc():
 
     with cd("$HOME"):
         zshrc_file = ".zshrc"
-        run("pwd")
+        run("cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/%s" % zshrc_file)
         run("sed -i '/plugins=(git)/d' .zshrc")
 
         # Add our own alias
         # java
-        append_to_file("## PATH\n", zshrc_file)
+        append_to_file("# PATH\n", zshrc_file)
         append_to_file("# JAVA", zshrc_file)
-        java_path = run("which java")
-        text = "export JAVA_HOME=%s" % java_path.replace('/jre/bin/java', '')
+        java_path = "/usr/lib/jvm/java-%s-openjdk-amd64" % properties['java']['version']
+        text = "export JAVA_HOME=%s" % java_path
         append_to_file(text, zshrc_file)
-        append_to_file("export PATH=$JAVA_HOME/bin:$PATH", zshrc_file)
+        append_to_file("export PATH=##JAVA_HOME/bin:##PATH", zshrc_file)
         run("echo 'export JAVA_OPTS=\"-Xms1024m -Xmx20000m\"' >> " + zshrc_file)
 
         # maven
         append_to_file("# MAVEN", zshrc_file)
         append_to_file("export MAVEN_HOME=/opt/maven", zshrc_file)
-        append_to_file("export PATH=$PATH:$MAVEN_HOME/bin", zshrc_file)
+        append_to_file("export PATH=##PATH:##MAVEN_HOME/bin", zshrc_file)
         run("echo 'export MAVEN_OPTS=\"-Xmx1024m\"' >> " + zshrc_file)
 
         # intellij
         append_to_file("# INTELLIJ", zshrc_file)
         append_to_file("export INTELLIJ_HOME=%s/intellij" % properties['working_directory'], zshrc_file)
-        append_to_file("export PATH=$PATH:$INTELLIJ_HOME/bin", zshrc_file)
+        append_to_file("export PATH=##PATH:##INTELLIJ_HOME/bin", zshrc_file)
 
         # tomcat
         append_to_file("# TOMCAT", zshrc_file)
         append_to_file("export CATALINA_HOME=%s/tomcat" % properties['working_directory'], zshrc_file)
-        run("echo 'export  CATALINA_OPTS=\"$CATALINA_OPTS -Xms256m\"' >> " + zshrc_file)
+        run("echo 'export  CATALINA_OPTS=\"##CATALINA_OPTS -Xms256m\"' >> " + zshrc_file)
 
         # liquibase
         append_to_file("# LIQUIBASE", zshrc_file)
         append_to_file("export LIQUIBASE_HOME=/opt/liquibase", zshrc_file)
-        append_to_file("export PATH=$PATH:$LIQUIBASE_HOME", zshrc_file)
+        append_to_file("export PATH=##PATH:##LIQUIBASE_HOME", zshrc_file)
 
         # ant
-        # f.write("# ANT")
-        # export ANT_HOME=/opt/ant
-        # export ANT_OPTS="-Dfile.encoding=utf-8"
-        # export PATH=$ANT_HOME/bin:$PATH
+        append_to_file("# ANT", zshrc_file)
+        append_to_file("export ANT_HOME=/opt/ant", zshrc_file)
+        append_to_file("export PATH=##PATH:##ANT_HOME/bin", zshrc_file)
 
         # proxy properties
         if properties['proxy']['host'] is not None:
             append_to_file("# PROXY", zshrc_file)
             proxy_addr = "http://%s:%s@%s:%s" % (
-            properties['proxy']['username'], properties['proxy']['pwd'], properties['proxy']['host'],
-            properties['proxy']['port'])
+                properties['proxy']['username'], properties['proxy']['pwd'], properties['proxy']['host'],
+                properties['proxy']['port'])
             append_to_file(
                 "no_proxy=localhost,127.0.0.1,172.16.0.0/12,10.0.0.0/8,*.site-mairie.noumea.nc,`/bin/hostname`",
                 zshrc_file)
@@ -435,15 +512,16 @@ def edit_oh_my_zshrc():
             append_to_file("export https_proxy", zshrc_file)
             append_to_file("export ftp_proxy", zshrc_file)
             append_to_file("export no_proxy", zshrc_file)
-            append_to_file("export HTTP_PROXY=$http_proxy", zshrc_file)
-            append_to_file("export HTTPS_PROXY=$https_proxy", zshrc_file)
-            append_to_file("export FTP_PROXY=$ftp_proxy", zshrc_file)
+            append_to_file("export HTTP_PROXY=##http_proxy", zshrc_file)
+            append_to_file("export HTTPS_PROXY=##https_proxy", zshrc_file)
+            append_to_file("export FTP_PROXY=##ftp_proxy", zshrc_file)
 
-        append_to_file("## CUSTOM ALIAS", zshrc_file)
+        append_to_file("# CUSTOM ALIAS", zshrc_file)
         append_to_file("alias ll='ls -ltr'", zshrc_file)
         append_to_file("alias squirrel='/opt/squirrel/squirrel-sql.sh'", zshrc_file)
         append_to_file(
-            "alias fakeSMTP='sudo java -jar %s/fakeSMTP/fakeSMTP-%s.jar -o . %s/fakeSMTP/received-emails  -a 127.0.0.1'" % (properties['working_directory'], properties['fakeSMTP']['version'], properties['working_directory']),
+            "alias fakeSMTP='sudo java -jar %s/fakeSMTP/fakeSMTP-%s.jar -o . %s/fakeSMTP/received-emails  -a 127.0.0.1'" % (
+                properties['working_directory'], properties['fakeSMTP']['version'], properties['working_directory']),
             zshrc_file)
         append_to_file("alias px='ps auxf | grep -v grep | grep -i -e VSZ -e'", zshrc_file)
         append_to_file("alias df='pydf'", zshrc_file)
@@ -455,7 +533,7 @@ def edit_oh_my_zshrc():
         append_to_file("alias datastudio='%s/DevTools/datastudio/datastudio.sh'" % properties['working_directory'],
                        zshrc_file)
         append_to_file("#Intellij", zshrc_file)
-        append_to_file("alias intellij='$INTELLIJ_HOME/bin/idea.sh'", zshrc_file)
+        append_to_file("alias intellij='##INTELLIJ_HOME/bin/idea.sh'", zshrc_file)
         append_to_file("# BFG Repo-Cleaner", zshrc_file)
         append_to_file("alias bfg='java -jar %s/bfg-repo-cleaner/bfg.jar &&'" % properties['working_directory'],
                        zshrc_file)
@@ -471,5 +549,9 @@ def edit_oh_my_zshrc():
         # append_to_file("alias dockerclean='dockercleanc || true && dockercleani'", zshrc_file)
         # append_to_file("# Get image ip", zshrc_file)
         # append_to_file("alias dps=\"docker ps -q | xargs docker inspect --format '{{ .Id }} - {{ .Name }} - {{ .NetworkSettings.IPAddress }}'\"", zshrc_file)
+
+        run("sed -i 's/##/$/g' %s" % zshrc_file)
+
+        run("source ~/%s" % zshrc_file)
 
     logging.info('.zshrc file customized with success...')
