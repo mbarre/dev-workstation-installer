@@ -1,6 +1,6 @@
-hosts: ['localhost']
-user: barmi83
-working_directory: /home/barmi83/DevTools
+hosts:
+user: teo
+working_directory: /home/teo/DevTools
 ubuntu:
   codename: xenial
 proxy:
